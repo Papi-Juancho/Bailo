@@ -1,4 +1,4 @@
-import { Document, Types } from 'mongoose'
+import { ClientSession, Document, Types } from 'mongoose'
 import { Deployment, Request, User, Version } from '../../types/interfaces'
 import RequestModel from '../models/Request'
 import { BadReq } from '../utils/result'
@@ -23,7 +23,7 @@ export async function createDeploymentRequests({ version, deployment }: { versio
   })
 }
 
-export async function createVersionRequests({ version }: { version: Version }) {
+export async function createVersionRequests({ version, session }: { version: Version, session: ClientSession }) {
   const [manager, reviewer] = await Promise.all([
     getUserById(version.metadata.contacts.manager),
     getUserById(version.metadata.contacts.reviewer),
@@ -47,12 +47,14 @@ export async function createVersionRequests({ version }: { version: Version }) {
     user: manager,
     version: version,
     approvalType: 'Manager',
+    session
   })
 
   const reviewerRequest = createVersionRequest({
     user: reviewer,
     version: version,
     approvalType: 'Reviewer',
+    session
   })
 
   return await Promise.all([managerRequest, reviewerRequest])
@@ -83,10 +85,12 @@ async function createVersionRequest({
   user,
   approvalType,
   version,
+  session
 }: {
   user: User
   approvalType: VersionApprovalType
   version: Version
+  session?: ClientSession
 }): Promise<Request> {
   return createRequest({
     documentType: 'version',
@@ -95,6 +99,8 @@ async function createVersionRequest({
 
     approvalType,
     requestType: 'Upload',
+
+    session
   })
 }
 
@@ -106,6 +112,7 @@ async function createRequest({
   user,
   approvalType,
   requestType,
+  session,
 }: {
   documentType: RequestDocumentType
   document: Document & { model: any; uuid: string }
@@ -113,6 +120,8 @@ async function createRequest({
 
   approvalType: VersionApprovalType | DeploymentApprovalType
   requestType: RequestType
+
+  session: ClientSession
 }) {
   const doc = {
     [documentType]: document._id,
@@ -134,6 +143,7 @@ async function createRequest({
       upsert: true,
       new: true,
       rawResult: true,
+      session
     }
   )
 

@@ -1,4 +1,4 @@
-import { Types } from 'mongoose'
+import { ClientSession, Types } from 'mongoose'
 import { castArray } from 'lodash'
 
 import { Forbidden } from '../utils/result'
@@ -24,8 +24,8 @@ export async function filterModel<T>(user: User, unfiltered: T): Promise<T> {
   return Array.isArray(unfiltered) ? (filtered as unknown as T) : filtered[0]
 }
 
-export async function findModelByUuid(user: User, uuid: string) {
-  const model = await ModelModel.findOne({ uuid })
+export async function findModelByUuid(user: User, uuid: string, session?: ClientSession) {
+  const model = await ModelModel.findOne({ uuid }).session(session ?? null)
   return filterModel(user, model)
 }
 
@@ -62,14 +62,14 @@ export async function findModels(user: User, { filter, type }: ModelFilter) {
   return filterModel(user, models)
 }
 
-export async function createModel(user: User, data: Model) {
+export async function createModel(user: User, data: Model, session?: ClientSession) {
   const model = new ModelModel(data)
 
   if (!authorisation.canUserSeeModel(user, model)) {
     throw Forbidden({ data }, 'Unable to create model, failed permissions check.')
   }
 
-  await model.save()
+  await model.save({ session })
 
   return model
 }

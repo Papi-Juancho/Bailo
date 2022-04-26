@@ -7,6 +7,7 @@ import { asyncFilter } from '../utils/general'
 import { Forbidden } from '../utils/result'
 import { createSerializer, SerializerOptions } from '../utils/logger'
 import { serializedModelFields } from './model'
+import { ClientSession } from 'mongoose'
 
 const authorisation = new AuthorisationBase()
 
@@ -80,14 +81,14 @@ interface CreateVersion {
   metadata: any
 }
 
-export async function createVersion(user: User, data: CreateVersion) {
+export async function createVersion(user: User, data: CreateVersion, session?: ClientSession) {
   const version = new VersionModel(data)
 
   if (!authorisation.canUserSeeVersion(user, version)) {
     throw Forbidden({ data }, 'Unable to create version, failed permissions check.')
   }
 
-  await version.save()
+  await version.save({ session })
 
   return version
 }

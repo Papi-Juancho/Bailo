@@ -77,7 +77,7 @@ export const postUpload = [
 
       const schema = await SchemaModel.findOne({
         reference: metadata.schemaRef,
-      })
+      }).session(session)
 
       if (!schema) {
         req.log.warn({ schemaRef: metadata.schemaRef }, 'Schema not found')
@@ -102,7 +102,7 @@ export const postUpload = [
         version = await createVersion(req.user!, {
           version: metadata.highLevelDetails.modelCardVersion,
           metadata: metadata,
-        })
+        }, session)
       } catch (err: any) {
         if (err.toString().includes('duplicate key error')) {
           return res.status(409).json({
@@ -120,7 +120,7 @@ export const postUpload = [
       let parentId
       if (req.body.parent) {
         req.log.info({ parent: req.body.parent }, 'Uploaded model has parent')
-        const parentModel = await findModelByUuid(req.user!, req.body.parent)
+        const parentModel = await findModelByUuid(req.user!, req.body.parent, session)
 
         if (!parentModel) {
           req.log.warn({ parent: req.body.parent }, 'Could not find parent')
@@ -140,9 +140,11 @@ export const postUpload = [
         // Update an existing model's version array
         const modelUuid = req.query.modelUuid
 
-        model = await findModelByUuid(req.user!, modelUuid as string)
+        model = await findModelByUuid(req.user!, modelUuid as string, session)
         model.versions.push(version._id)
         model.currentMetadata = metadata
+
+        await model.save({ session })
       } else {
         // Save a new model, and add the uploaded version to its array
         model = await createModel(req.user!, {
@@ -157,15 +159,14 @@ export const postUpload = [
         })
       }
 
-      await model.save()
-
       version.model = model._id
-      await version.save()
+      await version.save({ session })
 
       req.log.info({ model }, 'Created model document')
 
       const [managerRequest, reviewerRequest] = await createVersionRequests({
         version: await version.populate('model'),
+        session
       })
       req.log.info(
         { managerId: managerRequest._id, reviewRequest: reviewerRequest._id },
