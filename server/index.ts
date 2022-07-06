@@ -33,6 +33,7 @@ import logger, { expressErrorHandler, expressLogger } from './utils/logger'
 import { pullBuilderImage } from './utils/build'
 import { createIndexes } from './models/Model'
 import { getSpecification } from './routes/v1/specification'
+import { getDrafts, getDraft, deleteDraft, updateDraft, postDraft } from './routes/v1/draft'
 
 const port = config.get('listen')
 const dev = process.env.NODE_ENV !== 'production'
@@ -83,6 +84,12 @@ server.post('/api/v1/user/unfavourite/:id', ...unfavouriteModel)
 server.get('/api/v1/requests', ...getRequests)
 server.get('/api/v1/requests/count', ...getNumRequests)
 server.post('/api/v1/request/:id/respond', ...postRequestResponse)
+
+server.get('/api/v1/drafts', ...getDrafts)
+server.get('/api/v1/draft/:id', ...getDraft)
+server.delete('/api/v1/draft/:id', ...deleteDraft)
+server.put('/api/v1/draft/:id', ...updateDraft)
+server.post('/api/v1/draft', ...postDraft)
 
 server.get('/api/v1/registry_auth', ...getDockerRegistryAuth)
 

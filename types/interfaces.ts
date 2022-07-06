@@ -7,6 +7,7 @@ export type { VersionDoc as Version } from '../server/models/Version'
 export type { DeploymentDoc as Deployment } from '../server/models/Deployment'
 export type { RequestDoc as Request } from '../server/models/Request'
 export type { UserDoc as User } from '../server/models/User'
+export type { DraftDoc as Draft } from '../server/models/Draft'
 
 export type { ApprovalStates } from '../server/models/Deployment'
 

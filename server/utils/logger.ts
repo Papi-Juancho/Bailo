@@ -14,6 +14,7 @@ import { serializedModelFields } from '../services/model'
 import { serializedDeploymentFields } from '../services/deployment'
 import { serializedSchemaFields } from '../services/schema'
 import { serializedUserFields } from '../services/user'
+import { serializedDraftFields } from 'server/services/draft'
 
 class Writer {
   basepath: string
@@ -165,6 +166,8 @@ const log = bunyan.createLogger({
     schemas: createSerializer(serializedSchemaFields()),
     user: createSerializer(serializedUserFields()),
     users: createSerializer(serializedUserFields()),
+    draft: createSerializer(serializedDraftFields()),
+    drafts: createSerializer(serializedDraftFields()),
   },
 })
 

@@ -1,18 +1,20 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/router'
 import axios from 'axios'
 
 import Paper from '@mui/material/Paper'
 import Grid from '@mui/material/Grid'
 import Box from '@mui/material/Box'
+import { debounce } from 'lodash'
 
 import Wrapper from '@/src/Wrapper'
 import { useGetDefaultSchema, useGetSchemas } from '@/data/schema'
 import MultipleErrorWrapper from '@/src/errors/MultipleErrorWrapper'
-import { Schema, SplitSchema, Step, User } from '@/types/interfaces'
+import { Schema, SplitSchema, Step, User, Draft } from '@/types/interfaces'
 import { createStep, getStepsData, getStepsFromSchema } from '@/utils/formUtils'
 
 import SchemaSelector from '@/src/Form/SchemaSelector'
+import DraftSelector from '@/src/Form/DraftSelector'
 import SubmissionError from '@/src/Form/SubmissionError'
 import Form from '@/src/Form/Form'
 import ModelExportAndSubmission from '@/src/Form/ModelExportAndSubmission'
@@ -21,6 +23,7 @@ import RenderBasicFileTab from '@/src/Form/RenderBasicFileTab'
 import { useGetCurrentUser } from '@/data/user'
 import { MinimalErrorWrapper } from '@/src/errors/ErrorWrapper'
 import LoadingBar from '@/src/common/LoadingBar'
+import { useGetDrafts } from '@/data/draft'
 
 function renderSubmissionTab(
   _currentStep: Step,
@@ -59,16 +62,26 @@ const uiSchema = {
 function Upload() {
   const { defaultSchema, isDefaultSchemaError, isDefaultSchemaLoading } = useGetDefaultSchema('UPLOAD')
   const { schemas, isSchemasLoading, isSchemasError } = useGetSchemas('UPLOAD')
+  const { drafts, isDraftsLoading, isDraftsError } = useGetDrafts('UPLOAD')
   const { currentUser, isCurrentUserLoading, isCurrentUserError } = useGetCurrentUser()
 
   const router = useRouter()
 
   const [currentSchema, setCurrentSchema] = useState<Schema | undefined>(undefined)
+  const [currentDraft, setCurrentDraft] = useState<Draft | undefined>(undefined)
   const [user, setUser] = useState<User | undefined>(undefined)
   const [splitSchema, setSplitSchema] = useState<SplitSchema>({ reference: '', steps: [] })
   const [error, setError] = useState<string | undefined>(undefined)
   const [modelUploading, setModelUploading] = useState<boolean>(false)
   const [loadingPercentage, setUploadPercentage] = useState<number>(0)
+
+  useEffect(() => {
+    // Don't overwrite if there is an existing draft
+    if (currentDraft) return
+    setCurrentDraft((drafts ?? [])[0])
+
+    // TODO: Handle edge case where schema is different
+  }, [drafts, currentDraft])
 
   useEffect(() => {
     if (currentSchema) return
@@ -87,6 +100,7 @@ function Upload() {
     const { reference } = currentSchema
     const defaultState = {
       contacts: { uploader: user.id },
+      ...currentDraft?.draft
     }
 
     const steps = getStepsFromSchema(currentSchema, uiSchema, undefined, defaultState)
@@ -131,7 +145,15 @@ function Upload() {
     )
 
     setSplitSchema({ reference, steps })
-  }, [currentSchema, user])
+  }, [currentSchema, user, currentDraft])
+
+  useEffect(() => {
+    if (!splitSchema.steps[0].state.name) {
+      return
+    }
+
+    setDebouncedValue(splitSchema)
+  }, [splitSchema])
 
   const errorWrapper = MultipleErrorWrapper(
     `Unable to load upload page`,
@@ -139,19 +161,17 @@ function Upload() {
       isDefaultSchemaError,
       isSchemasError,
       isCurrentUserError,
+      isDraftsError
     },
     MinimalErrorWrapper
   )
   if (errorWrapper) return errorWrapper
 
-  if (isDefaultSchemaLoading || isSchemasLoading || isCurrentUserLoading) {
-    return null
-  }
-  const Loading = <Wrapper title='Loading...' page='deployment' />
-
+  const Loading = null
   if (isDefaultSchemaLoading || !defaultSchema) return Loading
   if (isSchemasLoading || !schemas) return Loading
   if (isCurrentUserLoading || !currentUser) return Loading
+  if (isDraftsLoading || !drafts) return Loading
 
   const onSubmit = async () => {
     setError(undefined)
@@ -195,11 +215,18 @@ function Upload() {
     <Paper variant='outlined' sx={{ my: { xs: 3, md: 6 }, p: { xs: 2, md: 3 } }}>
       <Grid container justifyContent='space-between' alignItems='center'>
         <Box />
-        <SchemaSelector
-          currentSchema={currentSchema ?? defaultSchema}
-          setCurrentSchema={setCurrentSchema}
-          schemas={schemas}
-        />
+        <Box>
+          <DraftSelector
+            currentDraft={currentDraft}
+            setCurrentDraft={setCurrentDraft}
+            drafts={drafts}
+          />
+          <SchemaSelector
+            currentSchema={currentSchema ?? defaultSchema}
+            setCurrentSchema={setCurrentSchema}
+            schemas={schemas}
+          />
+        </Box>
       </Grid>
 
       <SubmissionError error={error} />
