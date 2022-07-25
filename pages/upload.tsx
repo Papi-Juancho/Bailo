@@ -139,13 +139,17 @@ function Upload() {
     setSplitSchema({ reference, steps })
   }, [currentSchema, user, currentDraft])
 
-  useEffect(() => {
-    if (!splitSchema.steps[0].state.name) {
-      return
-    }
+  // useEffect(() => {
+  //   if (!splitSchema?.steps?[0]) {
+  //     return
+  //   }
 
-    setDebouncedValue(splitSchema)
-  }, [splitSchema])
+  //   if (!splitSchema?.steps?[0].state.name) {
+  //     return
+  //   }
+
+  //   setDebouncedValue(splitSchema)
+  // }, [splitSchema])
 
   const errorWrapper = MultipleErrorWrapper(
     `Unable to load upload page`,
