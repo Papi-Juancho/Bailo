@@ -1,4 +1,6 @@
 import fetch from 'cross-fetch'
+import https from 'https'
+import http from 'http'
 import { FormDataEncoder } from 'form-data-encoder'
 import { FormData } from 'formdata-node'
 import qs from 'qs'
@@ -109,19 +111,56 @@ type RequestFilter = 'all' | 'user'
 interface File {
   stream: any
 }
+
+interface Pki {
+  key: string
+  cert: string
+}
+
+interface Options {
+  pki?: Pki
+  rejectUnauthorized?: boolean
+}
+
+const defaultOpts: Options = {
+  rejectUnauthorized: false
+}
+
 export default class API {
   base: string
+  httpAgent: http.Agent
+  httpsAgent: https.Agent
 
-  constructor(base: string) {
+  constructor(base: string, opts: Options) {
+    const options = { ...defaultOpts, ...opts}
+    const httpsOptions: https.AgentOptions = {
+      rejectUnauthorized: opts.rejectUnauthorized,
+    }
+    
+    if (opts.pki) {
+      httpsOptions.key = opts.pki.key
+      httpsOptions.cert = opts.pki.cert
+    }
+    
+    this.httpAgent = new http.Agent()
+    this.httpsAgent = new https.Agent(httpsOptions)
+
     this.base = base
   }
 
+  apiFetch(url: string, options?: any) {
+    return fetch(url, {
+      agent: (parsedUrl: URL) => parsedUrl.protocol == 'http:' ? httpAgent : httpsAgent,
+      ...options
+    })
+  }
+
   apiGet(endpoint: string) {
-    return fetch(`${this.base}${endpoint}`).then((res) => res.json())
+    return this.apiFetch(`${this.base}${endpoint}`).then((res) => res.json())
   }
 
   apiPost(endpoint: string, body: any) {
-    return fetch(`${this.base}${endpoint}`, {
+    return this.apiFetch(`${this.base}${endpoint}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -155,7 +194,7 @@ export default class API {
     form.append('metadata', JSON.stringify(metadata))
 
     const encoder = new FormDataEncoder(form)
-    return await fetch(`${this.base}/model`, {
+    return await this.apiFetch(`${this.base}/model`, {
       method: 'POST',
       headers: encoder.headers,
       body: Readable.from(encoder) as any,

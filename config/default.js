@@ -95,6 +95,17 @@ module.exports = {
     protocol: 'http',
     host: 'localhost',
     port: 8080,
+
+    // Reject unauthorized SSL certificates
+    rejectUnauthorized: true,
+  },
+
+  authentication: {
+    pki: {
+      enabled: false,
+      key: '',
+      cert: '',
+    },
   },
 
   listen: 3000,
